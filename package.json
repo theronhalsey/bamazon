@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/theronhalsey/bamazon#readme",
   "dependencies": {
+    "azure": "^2.2.1-preview",
     "inquirer": "^5.2.0",
     "mysql": "^2.15.0"
   }

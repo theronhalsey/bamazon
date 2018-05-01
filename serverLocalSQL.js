@@ -6,7 +6,7 @@ const connection = mysql.createConnection({
     port: 3306,
     user: "root",
     password: "MySqueekWll2018!",
-    database: "playlist_db",
+    database: "bamazon_db",
 });
 
 connection.connect(function (err) {
@@ -20,11 +20,13 @@ const welcome = function () {
         .prompt({
             name: "welcome",
             type: "rawlist",
-            message: "Would you like to [SHOP], [RETURN] and item, or talk to [CUSTOMER SERVICE]?",
-            choices: ["POST", "quantity"]
+            message: "Would you like to see current [INVENTORY], [SHOP], [RETURN] and item, or talk to [CUSTOMER SERVICE]?",
+            choices: ["INVENTORY", "SHOP", "RETURN", "CUSTOMER SERVICE"]
         })
         .then(function (answer) {
-            if (answer.welcome.toUpperCase() === "SHOP") {
+            if (answer.welcome.toUpperCase() === "INVENTORY") {
+                inStock();
+            } else if (answer.welcome.toUpperCase() === "SHOP") {
                 shop();
             } else if (answer.welcome.toUpperCase() === "RETURN") {
                 returnItem();
@@ -37,22 +39,23 @@ const welcome = function () {
 };
 
 const shop = function () {
-    console.log("Let's see what we have in stock...\n");
-    connection.query("SELECT * FROM products", function (err, res) {
+    console.log("Let's start shopping!\n");
+    connection.query("SELECT * FROM inventory", function (err, res) {
         if (err) throw err;
         inquirer
             .prompt([
                 {
                     name: "choice",
                     type: "rawlist",
+                    message: "You could really use one of these in your life!\n",
                     choices: function () {
-                        var inventory = [];
-                        for (var i = 0; i < results.length; i++) {
-                            inventory.push(results[i].item_name);
+                        let inventory = [];
+                        for (var i = 0; i < res.length; i++) {
+                            inventory.push(res[i].item_name);
                         }
                         return inventory;
                     },
-                    message: "You could really use one of these in your life!"
+
                 },
                 {
                     name: "quantity",
@@ -62,13 +65,13 @@ const shop = function () {
             ])
             .then(function (answer) {
                 let selection;
-                for (var i = 0; i < results.length; i++) {
-                    if (results[i].item_name === answer.choice) {
-                        selection = results[i];
+                for (var i = 0; i < res.length; i++) {
+                    if (res[i].item_name === answer.choice) {
+                        selection = res[i];
                     }
                 };
 
-                if (selection.stock > parseInt(answer.quantity)) {
+                if (selection.stock >= parseInt(answer.quantity)) {
                     connection.query(
                         "UPDATE inventory SET ? WHERE ?",
                         [
@@ -81,7 +84,7 @@ const shop = function () {
                         ],
                         function (error) {
                             if (error) throw err;
-                            console.log("You ahve purchased " + answer.quantity + " of " + selection.name + "!");
+                            console.log("You have purchased " + answer.quantity + " of " + selection.item_name + "!");
                             welcome();
                         }
                     );
@@ -92,4 +95,31 @@ const shop = function () {
                 }
             });
     });
+};
+
+const inStock = function () {
+    console.log("Let's see what we have in stock...\n");
+    connection.query("SELECT * FROM inventory", function (err, res) {
+        if (err) throw err;
+        for (var i = 0; i < res.length; i++) {
+            console.log(res[i].item_name + ": " + res[i].stock + "\n")
+        }
+        welcome();
+    });
+    
+};
+
+const returnItem = function () {
+    console.log("Sorry! Every purchase is a life-long commitment!")
+    welcome();
+};
+
+const customerService = function () {
+    console.log("DESTROY ALL HUMANS!!!")
+    welcome();
+};
+
+const tryAgain = function () {
+    console.log("Sorry, I didn't get that. Why don't you try again...")
+    welcome();
 };
