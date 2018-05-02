@@ -1,18 +1,28 @@
-const azure = require('azure');
+const Connection = require('tedious').Connection;
+const Request = require('tedious').Request;
 const inquirer = require("inquirer");
 
-const connection = azure.createConnection({
-    host: "theron-test-db.database.windows.net",
-    port: 3306,
-    user: "theron",
-    password: "MySqueekWll2018!",
-    database: "testDB",
-});
+const config =
+    {
+        userName: 'theron',
+        password: 'MySqueekWll2018!',
+        server: 'theron-test-db.database.windows.net',
+        options:
+            {
+                database: 'testDB'
+                , encrypt: true
+            }
+    }
 
-connection.connect(function (err) {
-    if (err) throw err;
-    console.log("connected as id " + connection.threadId)
-    welcome();
+const connection = new Connection(config);
+
+connection.on('connect', function (err) {
+    if (err) {
+        console.log(err)
+    }
+    else {
+        welcome()
+    }
 });
 
 const welcome = function () {
@@ -40,8 +50,10 @@ const welcome = function () {
 
 const shop = function () {
     console.log("Let's start shopping!\n");
-    connection.query("SELECT * FROM inventory", function (err, res) {
+    request = new Request("SELECT * FROM inventory", function (err, rowCount, rows) {
         if (err) throw err;
+        console.log(rowCount)
+        console.log(rows)
         inquirer
             .prompt([
                 {
@@ -50,8 +62,8 @@ const shop = function () {
                     message: "You could really use one of these in your life!\n",
                     choices: function () {
                         let inventory = [];
-                        for (var i = 0; i < res.length; i++) {
-                            inventory.push(res[i].item_name);
+                        for (var i = 0; i < rows.length; i++) {
+                            inventory.push(rows[i].item_name);
                         }
                         return inventory;
                     },
@@ -65,9 +77,9 @@ const shop = function () {
             ])
             .then(function (answer) {
                 let selection;
-                for (var i = 0; i < res.length; i++) {
-                    if (res[i].item_name === answer.choice) {
-                        selection = res[i];
+                for (var i = 0; i < rows.length; i++) {
+                    if (rows[i].item_name === answer.choice) {
+                        selection = rows[i];
                     }
                 };
 
@@ -95,19 +107,23 @@ const shop = function () {
                 }
             });
     });
-};
+}
+
 
 const inStock = function () {
-    console.log("Let's see what we have in stock...\n");
-    connection.query("SELECT * FROM inventory", function (err, res) {
-        if (err) throw err;
-        for (var i = 0; i < res.length; i++) {
-            console.log(res[i].item_name + ": " + res[i].stock + "\n")
-        }
-        welcome();
+    request = new Request("SELECT * FROM inventory", function (err, rowCount, rows) {
+
+        console.log(rowCount + ' row(s) returned');
+        process.exit();
     });
-    
+    request.on('row', function (columns) {
+        columns.forEach(function (column) {
+            console.log("%s\t%s", column.metadata.colName, column.value);
+        });
+    });
+    connection.execSql(request);
 };
+
 
 const returnItem = function () {
     console.log("Sorry! Every purchase is a life-long commitment!")
